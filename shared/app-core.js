@@ -16,7 +16,16 @@
     'rating_history'
   ]);
 
-  const CORE_RESOURCE_SET = new Set(CORE_RESOURCES);
+  const SITE_RESOURCES = Object.freeze([
+    'results',
+    'schedule',
+    'match_report',
+    'transfers',
+    'sm_player_stats'
+  ]);
+
+  const RESOURCES = Object.freeze([...CORE_RESOURCES, ...SITE_RESOURCES]);
+  const RESOURCE_SET = new Set(RESOURCES);
   const ALLOWED_PARAMS = new Set([
     'game_world_id',
     'club_id',
@@ -29,7 +38,7 @@
 
   async function minisiteRead(resource, params = {}) {
     const normalizedResource = String(resource || '').trim().toLowerCase();
-    if (!CORE_RESOURCE_SET.has(normalizedResource)) {
+    if (!RESOURCE_SET.has(normalizedResource)) {
       throw new Error(`IMC minisite resource non consentita: ${normalizedResource || '(vuota)'}`);
     }
 
@@ -80,7 +89,9 @@
 
   window.IMC_MINISITE_DATA = Object.freeze({
     read: minisiteRead,
-    resources: CORE_RESOURCES,
+    resources: RESOURCES,
+    coreResources: CORE_RESOURCES,
+    siteResources: SITE_RESOURCES,
     gameWorldId
   });
 
