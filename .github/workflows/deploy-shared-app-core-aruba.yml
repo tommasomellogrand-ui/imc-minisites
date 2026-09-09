@@ -18,11 +18,18 @@ concurrency:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    env:
+      ARUBA_FTP_HOST: ${{ vars.ARUBA_FTP_HOST }}
+      ARUBA_FTP_PORT: ${{ vars.ARUBA_FTP_PORT }}
+      ARUBA_FTP_ROOT: ${{ vars.ARUBA_FTP_ROOT }}
+      ARUBA_WEB_ROOT: ${{ vars.ARUBA_WEB_ROOT }}
+      ARUBA_FTP_USERNAME: ${{ secrets.ARUBA_FTP_USERNAME }}
+      ARUBA_FTP_PASSWORD: ${{ secrets.ARUBA_FTP_PASSWORD }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Validate shared app core
+      - name: Validate shared app core and Aruba configuration
         shell: bash
         run: |
           set -euo pipefail
@@ -30,27 +37,32 @@ jobs:
           node --check shared/app-core.js
           grep -q "IMC_MINISITE_DATA" shared/app-core.js
           grep -q "minisite_read" shared/app-core.js
+          test -n "${ARUBA_FTP_HOST:-}"
+          test -n "${ARUBA_FTP_PORT:-}"
+          test -n "${ARUBA_FTP_ROOT:-}"
+          test -n "${ARUBA_WEB_ROOT:-}"
+          test -n "${ARUBA_FTP_USERNAME:-}"
+          test -n "${ARUBA_FTP_PASSWORD:-}"
+          test "$ARUBA_FTP_PORT" = "21"
+          test "$ARUBA_FTP_ROOT" = "/"
+          test "$ARUBA_WEB_ROOT" = "/www.italianmastersclub.it"
 
       - name: Deploy shared app core to Aruba
-        env:
-          ARUBA_FTP_USERNAME: ${{ secrets.ARUBA_FTP_USERNAME }}
-          ARUBA_FTP_PASSWORD: ${{ secrets.ARUBA_FTP_PASSWORD }}
         shell: bash
         run: |
           set -euo pipefail
-          test -n "${ARUBA_FTP_USERNAME:-}"
-          test -n "${ARUBA_FTP_PASSWORD:-}"
           python3 - <<'PY'
           import io, os, ssl
           from ftplib import FTP_TLS, error_perm
           from pathlib import Path
 
-          host='ftp.italianmastersclub.it'
-          port=21
+          host=os.environ['ARUBA_FTP_HOST'].strip()
+          port=int(os.environ['ARUBA_FTP_PORT'])
           username=os.environ['ARUBA_FTP_USERNAME']
           password=os.environ['ARUBA_FTP_PASSWORD']
+          web_root=os.environ['ARUBA_WEB_ROOT'].rstrip('/')
           local=Path('shared/app-core.js')
-          remote_dir='/www.italianmastersclub.it/minisite/shared'
+          remote_dir=web_root + '/minisite/shared'
 
           ctx=ssl.create_default_context()
           ctx.check_hostname=False
